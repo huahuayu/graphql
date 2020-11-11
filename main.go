@@ -3,13 +3,12 @@ package main
 import (
 	"bufio"
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/machinebox/graphql"
 	"os"
 )
 
-type DataStruct struct {
+type TokenDayData struct {
 	TokenDayDatas []struct {
 		DailyVolumeETH      string `json:"dailyVolumeETH"`
 		DailyVolumeToken    string `json:"dailyVolumeToken"`
@@ -23,10 +22,57 @@ type DataStruct struct {
 	} `json:"tokenDayDatas"`
 }
 
+type GlobalStats struct {
+	Data struct {
+		UniswapFactory struct {
+			TotalLiquidityUSD string `json:"totalLiquidityUSD"`
+			TotalVolumeUSD    string `json:"totalVolumeUSD"`
+			TxCount           string `json:"txCount"`
+		} `json:"uniswapFactory"`
+	} `json:"data"`
+}
+
+type PairData struct {
+	Data struct {
+		Pair struct {
+			Reserve0   string `json:"reserve0"`
+			Reserve1   string `json:"reserve1"`
+			ReserveUSD string `json:"reserveUSD"`
+			Token0     struct {
+				DerivedETH string `json:"derivedETH"`
+				ID         string `json:"id"`
+				Name       string `json:"name"`
+				Symbol     string `json:"symbol"`
+			} `json:"token0"`
+			Token0Price string `json:"token0Price"`
+			Token1      struct {
+				DerivedETH string `json:"derivedETH"`
+				ID         string `json:"id"`
+				Name       string `json:"name"`
+				Symbol     string `json:"symbol"`
+			} `json:"token1"`
+			Token1Price       string `json:"token1Price"`
+			TrackedReserveETH string `json:"trackedReserveETH"`
+			TxCount           string `json:"txCount"`
+			VolumeUSD         string `json:"volumeUSD"`
+		} `json:"pair"`
+	} `json:"data"`
+}
+
 func main() {
+	tokenDayDataQuery()
+	pairDataQuery()
+	globalStatQuery()
+}
+
+func graphQuery(query string, res interface{}) error {
 	graphqlClient := graphql.NewClient("https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v2")
-	// queries 	https://uniswap.org/docs/v2/API/queries/
-	graphqlRequest := graphql.NewRequest(`
+	graphqlRequest := graphql.NewRequest(query)
+	return graphqlClient.Run(context.Background(), graphqlRequest, &res)
+}
+
+func tokenDayDataQuery() {
+	query := `
 		{
 		 tokenDayDatas(orderBy: date, orderDirection: asc,
 		  where: {
@@ -44,17 +90,66 @@ func main() {
 			dailyVolumeUSD
 			 }
 			}
-    `)
-	res := new(DataStruct)
-	if err := graphqlClient.Run(context.Background(), graphqlRequest, &res); err != nil {
-		panic(err.Error())
-	}
-	jsonBytes, err := json.Marshal(res)
-	if err != nil{
+    `
+	res := new(TokenDayData)
+	err := graphQuery(query, res)
+	if err != nil {
 		panic(err.Error())
 	}
 	fmt.Println(res.TokenDayDatas[0])
-	output(string(jsonBytes))
+}
+
+func globalStatQuery() {
+	query := `
+{
+ uniswapFactory(id: "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f"){
+   totalVolumeUSD
+   totalLiquidityUSD
+   txCount
+ }
+}
+    `
+	res := new(GlobalStats)
+	err := graphQuery(query, res)
+	if err != nil {
+		panic(err.Error())
+	}
+	fmt.Println(res)
+}
+
+func pairDataQuery() {
+	query := `
+{
+ pair(id: "0xa478c2975ab1ea89e8196811f51a7b7ade33eb11"){
+     token0 {
+       id
+       symbol
+       name
+       derivedETH
+     }
+     token1 {
+       id
+       symbol
+       name
+       derivedETH
+     }
+     reserve0
+     reserve1
+     reserveUSD
+     trackedReserveETH
+     token0Price
+     token1Price
+     volumeUSD
+     txCount
+ }
+}
+    `
+	res := new(PairData)
+	err := graphQuery(query, res)
+	if err != nil {
+		panic(err.Error())
+	}
+	fmt.Println(res)
 }
 
 func output(json string) {
