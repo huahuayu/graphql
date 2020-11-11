@@ -6,9 +6,8 @@ This is an example demonstrate how to query uniswap v2 data by graphql in golang
 
 ```bash
 git clone https://github.com/huahuayu/graphql.git
-```
-
-```bash
+cd graphql
+go build ./...
 go run main.go
 ```
 
