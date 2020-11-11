@@ -1,4 +1,4 @@
-# go graphql to query uniswap v2 example
+# go graphql uniswap v2 example
 
 This is an example demonstrate how to query uniswap v2 data by graphql in golang.
 
